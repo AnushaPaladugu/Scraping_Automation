@@ -1,0 +1,49 @@
+{
+  "name": "job-scraping-automation-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Job Scraping Automation Platform",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "job-scraper",
+    "automation",
+    "ats-detection",
+    "playwright",
+    "cheerio"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cheerio": "^1.0.0-rc.12",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.0.0",
+    "dotenv": "^16.4.5",
+    "duck-duck-scrape": "^2.2.7",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "google-sr": "^6.0.0",
+    "he": "^1.2.0",
+    "multer": "^1.4.5-lts.1",
+    "p-limit": "^3.1.0",
+    "playwright": "^1.44.0",
+    "uuid": "^9.0.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/he": "^1.2.3",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.14.0",
+    "@types/uuid": "^9.0.8",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}
