@@ -51,13 +51,13 @@ export const LogsPage: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "error":
-        return <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />;
+        return <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />;
       case "warning":
-        return <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
+        return <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />;
       case "success":
-        return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
+        return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />;
       default:
-        return <Info className="w-3.5 h-3.5 text-blue-400 shrink-0" />;
+        return <Info className="w-3.5 h-3.5 text-blue-600 shrink-0" />;
     }
   };
 
@@ -66,8 +66,8 @@ export const LogsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Structured System Logs</h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Structured System Logs</h1>
+          <p className="text-sm text-slate-600 mt-1">
             Real-time audit log of discovery checks, ATS detection, scraping decisions, and errors.
           </p>
         </div>
@@ -76,7 +76,7 @@ export const LogsPage: React.FC = () => {
           <button
             onClick={fetchLogs}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition"
+            className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold text-xs rounded-xl transition shadow-xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             <span>Refresh</span>
@@ -84,7 +84,7 @@ export const LogsPage: React.FC = () => {
           <a
             href={apiService.getLogsJsonExportUrl()}
             download="scraping_logs.json"
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 font-semibold text-xs rounded-xl transition"
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-semibold text-xs rounded-xl transition shadow-xs"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export JSON</span>
@@ -93,7 +93,7 @@ export const LogsPage: React.FC = () => {
       </div>
 
       {/* Filter and Search */}
-      <div className="bg-slate-800/80 border border-slate-700/80 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+      <div className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
@@ -101,16 +101,16 @@ export const LogsPage: React.FC = () => {
             placeholder="Search logs by message, company, or stage..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-3.5 h-3.5 text-slate-400" />
+          <Filter className="w-3.5 h-3.5 text-slate-500" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 focus:outline-none"
+            className="bg-white border border-slate-300 text-slate-800 rounded-xl px-3 py-2 focus:outline-none shadow-xs"
           >
             <option value="all">All Statuses</option>
             <option value="info">Info</option>
@@ -122,37 +122,37 @@ export const LogsPage: React.FC = () => {
       </div>
 
       {/* Logs Table / List */}
-      <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden font-mono text-xs shadow-inner">
-        <div className="p-3 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between text-slate-400">
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden font-mono text-xs shadow-xs">
+        <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-slate-600 font-sans font-medium">
           <span>Showing {filteredLogs.length} events</span>
-          <span className="text-[10px] uppercase tracking-wider">Live Log Stream</span>
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">Live Log Stream</span>
         </div>
 
-        <div className="max-h-[600px] overflow-y-auto divide-y divide-slate-850 p-2 space-y-1">
+        <div className="max-h-[600px] overflow-y-auto divide-y divide-slate-100 p-2 space-y-1">
           {filteredLogs.length === 0 ? (
-            <div className="p-8 text-center text-slate-600 font-sans">No matching log records found.</div>
+            <div className="p-8 text-center text-slate-400 font-sans">No matching log records found.</div>
           ) : (
             filteredLogs.map((log, idx) => (
               <div
                 key={idx}
-                className="p-2.5 rounded-lg hover:bg-slate-900/60 transition flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3"
+                className="p-2.5 rounded-lg hover:bg-slate-50 transition flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3"
               >
                 <div className="flex items-center gap-2 shrink-0">
                   {getStatusIcon(log.status)}
-                  <span className="text-slate-500 text-[10px]">
+                  <span className="text-slate-400 text-[10px]">
                     {new Date(log.timestamp).toLocaleTimeString()}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-800 text-slate-300">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-100 text-slate-700 border border-slate-200">
                     {log.stage}
                   </span>
                   {log.company && (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/40">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">
                       {log.company}
                     </span>
                   )}
                 </div>
 
-                <div className="text-slate-300 font-sans text-xs break-all flex-1">
+                <div className="text-slate-700 font-sans text-xs break-all flex-1">
                   {log.message}
                 </div>
               </div>
