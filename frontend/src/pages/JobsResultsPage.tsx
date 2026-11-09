@@ -60,63 +60,50 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
         (j) =>
           j.job_title.toLowerCase().includes(q) ||
           j.company_name.toLowerCase().includes(q) ||
-          (j.location || "").toLowerCase().includes(q) ||
-          (j.description || "").toLowerCase().includes(q)
+          (j.location || "").toLowerCase().includes(q)
       );
     }
     if (selectedMethod) {
-      list = list.filter((j) => j.source_type === selectedMethod);
+      list = list.filter((j) => (j.source_type || "").toLowerCase() === selectedMethod.toLowerCase());
     }
     if (selectedRemote) {
-      list = list.filter(
-        (j) => (j.remote_type || "").toLowerCase() === selectedRemote.toLowerCase()
-      );
+      list = list.filter((j) => (j.remote_type || "").toLowerCase() === selectedRemote.toLowerCase());
     }
     return list;
-  }, [jobScope?.jobs, search, selectedMethod, selectedRemote]);
+  }, [jobScope, search, selectedMethod, selectedRemote]);
 
-  // Load jobs with current filters
+  const effectiveTaskId = jobScope?.taskId || searchParams?.taskId;
+
   const fetchJobs = async () => {
+    // If we have an in-memory jobScope from Single Discovery with pre-loaded jobs, use it
     if (jobScope?.jobs) {
       setLoading(false);
       return;
     }
+
     setLoading(true);
     try {
       const res = await apiService.getJobs({
-        search: search || undefined,
+        offset: (page - 1) * limit,
+        limit,
         company: selectedCompany || jobScope?.companyName || undefined,
         method: selectedMethod || undefined,
         remote: selectedRemote || undefined,
-        taskId: jobScope?.taskId || searchParams?.taskId || undefined,
-        limit,
-        offset: (page - 1) * limit,
+        search: search || undefined,
+        taskId: effectiveTaskId || undefined,
       });
-      setJobs(res.jobs);
-      setTotal(res.total);
+      setJobs(res.jobs || []);
+      setTotal(res.total || 0);
     } catch (err) {
-      console.error("Failed to fetch jobs", err);
+      console.error("Failed to load jobs", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (searchParams?.company && searchParams.company !== selectedCompany) {
-      setSelectedCompany(searchParams.company);
-    }
-  }, [searchParams?.company]);
-
-  useEffect(() => {
-    setPage(1);
     fetchJobs();
-  }, [jobScope, selectedCompany, selectedMethod, selectedRemote, searchParams?.taskId]);
-
-  useEffect(() => {
-    if (!jobScope?.jobs) {
-      fetchJobs();
-    }
-  }, [page]);
+  }, [page, selectedCompany, selectedMethod, selectedRemote, jobScope, effectiveTaskId]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,16 +111,15 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
     fetchJobs();
   };
 
-  // Determine current display list and total
-  const isScopedMemory = Boolean(jobScope?.jobs);
-  const displayJobs = isScopedMemory
+  // Determine jobs to display based on whether we are viewing a scoped set
+  const displayJobs = jobScope?.jobs
     ? scopedFilteredJobs.slice((page - 1) * limit, page * limit)
     : jobs;
-  const displayTotal = isScopedMemory ? scopedFilteredJobs.length : total;
-  const totalPages = Math.ceil(displayTotal / limit) || 1;
 
-  const effectiveTaskId = jobScope?.taskId || searchParams?.taskId;
+  const displayTotal = jobScope?.jobs ? scopedFilteredJobs.length : total;
+  const totalPages = Math.max(1, Math.ceil(displayTotal / limit));
 
+  // Export handlers
   const handleExportExcel = async () => {
     setExporting("excel");
     try {
@@ -200,23 +186,23 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Scoped View Notification Banner */}
       {jobScope && (
-        <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg animate-in slide-in-from-top duration-200">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in slide-in-from-top duration-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-base border border-emerald-500/30">
-              <Sparkles className="w-5 h-5 text-emerald-400" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-base border border-emerald-200">
+              <Sparkles className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-emerald-200">
+                <h2 className="text-sm font-semibold text-emerald-900">
                   {jobScope.source === "single_discovery"
                     ? `Scoped Results: ${jobScope.companyName || "Recent Scrape"}`
                     : `Scoped Results: Bulk Scraping Task`}
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                   {displayTotal} Jobs Scraped
                 </span>
               </div>
-              <p className="text-xs text-emerald-300/80 mt-0.5">
+              <p className="text-xs text-emerald-700 mt-0.5">
                 Displaying and exporting only newly extracted jobs from this scrape session.
               </p>
             </div>
@@ -227,7 +213,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
               onClearScope?.();
               navigate({ to: "/jobs" });
             }}
-            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-xs rounded-xl transition self-start sm:self-auto flex items-center gap-1.5 shadow"
+            className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-medium text-xs rounded-xl transition self-start sm:self-auto flex items-center gap-1.5 shadow-xs"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Show All Historical Jobs</span>
@@ -238,10 +224,10 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             {jobScope ? "Extracted Jobs (Scoped View)" : "Normalized Jobs Results"}
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-slate-600 mt-1">
             {jobScope
               ? `Showing extracted jobs for ${jobScope.companyName || "selected task"}. You can preview or export below.`
               : "Browse, filter, and inspect verified, processed, deduplicated job postings."}
@@ -253,7 +239,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
           <button
             onClick={handleExportExcel}
             disabled={exporting !== null}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 font-semibold text-xs rounded-xl transition disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-semibold text-xs rounded-xl transition shadow-xs disabled:opacity-50"
             title="Download formatted Excel workbook (.xlsx)"
           >
             <Download className="w-3.5 h-3.5" />
@@ -262,7 +248,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
           <button
             onClick={handleExportJson}
             disabled={exporting !== null}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs rounded-xl transition disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold text-xs rounded-xl transition shadow-xs disabled:opacity-50"
             title="Download JSON data (.json)"
           >
             <Download className="w-3.5 h-3.5" />
@@ -272,7 +258,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-slate-800/80 border border-slate-700/80 p-4 rounded-2xl space-y-4">
+      <div className="bg-white border border-slate-200 p-4 rounded-2xl space-y-4 shadow-xs">
         <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -281,12 +267,12 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
               placeholder="Search by title, company, location, keywords..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
             />
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-xl transition"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-xl transition shadow-xs"
           >
             Search
           </button>
@@ -294,7 +280,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
 
         {/* Dropdowns */}
         <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
-          <div className="flex items-center gap-1 text-slate-400">
+          <div className="flex items-center gap-1 text-slate-500">
             <Filter className="w-3.5 h-3.5" /> Filter by:
           </div>
 
@@ -304,7 +290,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
               setSelectedMethod(e.target.value);
               setPage(1);
             }}
-            className="bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+            className="bg-white border border-slate-300 text-slate-800 rounded-lg px-2.5 py-1.5 focus:outline-none shadow-xs"
           >
             <option value="">All Scraping Methods</option>
             <option value="api">API / ATS</option>
@@ -319,7 +305,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
               setSelectedRemote(e.target.value);
               setPage(1);
             }}
-            className="bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none"
+            className="bg-white border border-slate-300 text-slate-800 rounded-lg px-2.5 py-1.5 focus:outline-none shadow-xs"
           >
             <option value="">All Workplace Types</option>
             <option value="Remote">Remote</option>
@@ -336,7 +322,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
                 setSelectedRemote("");
                 setPage(1);
               }}
-              className="text-emerald-400 hover:underline text-xs ml-auto"
+              className="text-emerald-600 hover:underline text-xs ml-auto font-medium"
             >
               Reset Filters
             </button>
@@ -345,14 +331,14 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
       </div>
 
       {/* Jobs Table */}
-      <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-slate-700/80 flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-300">
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+        <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
+          <span className="text-xs font-semibold text-slate-700">
             Showing {displayJobs.length} of {displayTotal} Normalized Jobs
           </span>
           <button
             onClick={fetchJobs}
-            className="p-1 hover:text-slate-100 text-slate-400 transition"
+            className="p-1 hover:text-slate-900 text-slate-400 transition"
             title="Refresh"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -361,7 +347,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-900/60 text-slate-400 border-b border-slate-700/80 uppercase font-semibold">
+            <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase font-semibold">
               <tr>
                 <th className="p-3.5">Company</th>
                 <th className="p-3.5">Job Title</th>
@@ -374,7 +360,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
                 <th className="p-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/50">
+            <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
                   <td colSpan={9} className="p-8 text-center text-slate-400">
@@ -383,7 +369,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
                 </tr>
               ) : displayJobs.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center text-slate-500">
+                  <td colSpan={9} className="p-12 text-center text-slate-400">
                     No jobs found matching the selected filters.
                   </td>
                 </tr>
@@ -392,35 +378,35 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
                   <tr
                     key={idx}
                     onClick={() => setSelectedJob(job)}
-                    className="hover:bg-slate-700/30 transition cursor-pointer"
+                    className="hover:bg-slate-50 transition cursor-pointer"
                   >
-                    <td className="p-3.5 font-bold text-slate-200">{job.company_name}</td>
-                    <td className="p-3.5 font-medium text-slate-100 max-w-xs truncate">
+                    <td className="p-3.5 font-bold text-slate-800">{job.company_name}</td>
+                    <td className="p-3.5 font-medium text-slate-900 max-w-xs truncate">
                       {job.job_title}
                     </td>
-                    <td className="p-3.5 text-slate-400">{job.location || "N/A"}</td>
+                    <td className="p-3.5 text-slate-600">{job.location || "N/A"}</td>
                     <td className="p-3.5">
                       {job.remote_type ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-700 text-slate-300">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
                           {job.remote_type}
                         </span>
                       ) : (
-                        <span className="text-slate-600">—</span>
+                        <span className="text-slate-400">—</span>
                       )}
                     </td>
-                    <td className="p-3.5 text-slate-300 font-mono">{job.salary || "—"}</td>
+                    <td className="p-3.5 text-slate-700 font-mono">{job.salary || "—"}</td>
                     <td className="p-3.5">
-                      <span className="text-purple-300">{job.ats || "General"}</span>
+                      <span className="text-purple-700 font-medium">{job.ats || "General"}</span>
                     </td>
                     <td className="p-3.5">
                       <StatusBadge status={job.source_type} type="method" />
                     </td>
-                    <td className="p-3.5 text-slate-400 font-mono">{job.posted_date || "—"}</td>
+                    <td className="p-3.5 text-slate-500 font-mono">{job.posted_date || "—"}</td>
                     <td className="p-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => setSelectedJob(job)}
-                          className="p-1 hover:text-emerald-400 text-slate-400 transition"
+                          className="p-1 hover:text-emerald-600 text-slate-400 transition"
                           title="View Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -429,7 +415,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
                           href={job.job_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1 hover:text-blue-400 text-slate-400 transition"
+                          className="p-1 hover:text-blue-600 text-slate-400 transition"
                           title="Open Link"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
@@ -444,7 +430,7 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
         </div>
 
         {/* Pagination Bar */}
-        <div className="p-4 border-t border-slate-700/80 flex items-center justify-between text-xs text-slate-400">
+        <div className="p-4 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs text-slate-600">
           <div>
             Page {page} of {totalPages}
           </div>
@@ -452,14 +438,14 @@ export const JobsResultsPage: React.FC<JobsResultsPageProps> = ({
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 transition"
+              className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 disabled:opacity-40 transition shadow-xs"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="p-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 disabled:opacity-40 transition"
+              className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 disabled:opacity-40 transition shadow-xs"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

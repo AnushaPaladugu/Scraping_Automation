@@ -34,8 +34,8 @@ export const getStrategyInfo = (res: CompanyDiscoveryResult) => {
     return {
       type: "API (GET or POST)",
       detail: `Direct ATS API (${ats})`,
-      color: "text-emerald-400",
-      badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+      color: "text-emerald-700",
+      badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
     };
   }
 
@@ -43,8 +43,8 @@ export const getStrategyInfo = (res: CompanyDiscoveryResult) => {
     return {
       type: "Static (HTML)",
       detail: `Server-Rendered Pagination (${ats})`,
-      color: "text-blue-400",
-      badgeColor: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+      color: "text-blue-700",
+      badgeColor: "bg-blue-50 text-blue-700 border-blue-200",
     };
   }
 
@@ -52,16 +52,16 @@ export const getStrategyInfo = (res: CompanyDiscoveryResult) => {
     return {
       type: "Dynamic (JavaScript / Playwright)",
       detail: `SPA / Dynamic Portal (${ats})`,
-      color: "text-cyan-300",
-      badgeColor: "bg-cyan-500/10 text-cyan-300 border-cyan-500/30",
+      color: "text-cyan-700",
+      badgeColor: "bg-cyan-50 text-cyan-700 border-cyan-200",
     };
   }
 
   return {
     type: "Dynamic (SPA) / Static (HTML)",
     detail: "Adaptive Browser / HTML Extraction",
-    color: "text-amber-300",
-    badgeColor: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+    color: "text-amber-700",
+    badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
   };
 };
 
@@ -150,20 +150,20 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
       {/* Title */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Single Company Discovery</h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Single Company Discovery</h1>
+        <p className="text-sm text-slate-600 mt-1">
           Enter a company name to automatically verify its official domain, discover career portals,
           and identify its ATS technology stack without guessing URLs.
         </p>
       </div>
 
       {/* Input Form */}
-      <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
         <form onSubmit={handleDiscover} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                Company Name <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">
+                Company Name <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-3" />
@@ -172,14 +172,14 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
                   placeholder="e.g. The Travel Village Group Limited, ServiceNow..."
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 text-sm"
+                  className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                Company Website / Domain <span className="text-slate-500 font-normal lowercase">(optional)</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-2">
+                Company Website / Domain <span className="text-slate-400 font-normal lowercase">(optional)</span>
               </label>
               <div className="relative">
                 <Globe className="w-5 h-5 text-slate-400 absolute left-3.5 top-3" />
@@ -188,7 +188,7 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
                   placeholder="e.g. travelvillagegroup.com (Leave blank to auto-discover)"
                   value={companyUrl}
                   onChange={(e) => setCompanyUrl(e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 text-sm"
+                  className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-sm"
                 />
               </div>
             </div>
@@ -197,8 +197,8 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
             {/* Quick Select Chips */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Try sample:
+              <span className="text-xs text-slate-500 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Try sample:
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {quickSamples.map((sample) => (
@@ -209,7 +209,7 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
                       setCompanyName(sample);
                       setCompanyUrl("");
                     }}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-slate-700/70 hover:bg-slate-700 text-slate-300 transition"
+                    className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition"
                   >
                     {sample}
                   </button>
@@ -220,7 +220,7 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
             <button
               type="submit"
               disabled={loading || !companyName.trim()}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium text-sm rounded-xl transition shadow-lg shadow-emerald-600/20"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium text-sm rounded-xl transition shadow-md shadow-emerald-600/20"
             >
               {loading ? (
                 <>
@@ -240,25 +240,25 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
 
       {/* Error message */}
       {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-3 text-rose-300 text-sm">
-          <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-3 text-rose-700 text-sm">
+          <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Discovery Result Card */}
       {discoveryResult && (
-        <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl overflow-hidden shadow-lg space-y-6 p-6">
-          <div className="flex items-start justify-between border-b border-slate-700/70 pb-5">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs space-y-6 p-6">
+          <div className="flex items-start justify-between border-b border-slate-200 pb-5">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <StatusBadge status={discoveryResult.detectionStatus} type="detection" />
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-slate-500">
                   Confidence: {Math.round(discoveryResult.confidence * 100)}%
                 </span>
               </div>
-              <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
-                <Building2 className="w-6 h-6 text-emerald-400" />
+              <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                <Building2 className="w-6 h-6 text-emerald-600" />
                 {discoveryResult.companyName}
               </h2>
             </div>
@@ -267,7 +267,7 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
             <button
               onClick={handleGetJobsData}
               disabled={scraping || !discoveryResult.careerUrl}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition shadow-lg shadow-indigo-600/20"
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition shadow-md shadow-indigo-600/20"
             >
               {scraping ? (
                 <>
@@ -284,42 +284,42 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
           </div>
 
           {/* Pre-Scraping Filters Panel */}
-          <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-700/80 space-y-3">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-emerald-400" /> Scraping Filters (Optional)
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-emerald-600" /> Scraping Filters (Optional)
               </span>
-              <span className="text-[11px] text-slate-400">
+              <span className="text-[11px] text-slate-500">
                 Applied during extraction before normalization
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Country Filter</label>
+                <label className="block text-[11px] text-slate-500 mb-1">Country Filter</label>
                 <input
                   type="text"
                   placeholder="e.g. United States, United Kingdom, India... (Leave blank for all)"
                   value={filterCountry}
                   onChange={(e) => setFilterCountry(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Job Title / Keyword</label>
+                <label className="block text-[11px] text-slate-500 mb-1">Job Title / Keyword</label>
                 <input
                   type="text"
                   placeholder="e.g. Developer, Engineer, Sales... (Leave blank for all)"
                   value={filterKeyword}
                   onChange={(e) => setFilterKeyword(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Posted Date Filter</label>
+                <label className="block text-[11px] text-slate-500 mb-1">Posted Date Filter</label>
                 <select
                   value={filterDays ?? ""}
                   onChange={(e) => setFilterDays(e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 >
                   <option value="">Anytime (All active jobs)</option>
                   <option value="1">Past 24 Hours</option>
@@ -334,78 +334,78 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
 
           {/* Details Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Globe className="w-4 h-4 text-blue-400" /> Official Website
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Globe className="w-4 h-4 text-blue-600" /> Official Website
               </span>
               {discoveryResult.companyUrl ? (
                 <a
                   href={discoveryResult.companyUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-400 hover:underline flex items-center gap-1 font-mono text-xs break-all"
+                  className="text-blue-600 hover:underline flex items-center gap-1 font-mono text-xs break-all"
                 >
                   <span>{discoveryResult.companyUrl}</span>
                   <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                 </a>
               ) : (
-                <span className="text-slate-500">Not verified</span>
+                <span className="text-slate-400">Not verified</span>
               )}
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Globe className="w-4 h-4 text-emerald-400" /> Career Website
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Globe className="w-4 h-4 text-emerald-600" /> Career Website
               </span>
               {discoveryResult.careerUrl ? (
                 <a
                   href={discoveryResult.careerUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-emerald-400 hover:underline flex items-center gap-1 font-mono text-xs break-all"
+                  className="text-emerald-600 hover:underline flex items-center gap-1 font-mono text-xs break-all"
                 >
                   <span>{discoveryResult.careerUrl}</span>
                   <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                 </a>
               ) : (
-                <span className="text-slate-500">Not detected</span>
+                <span className="text-slate-400">Not detected</span>
               )}
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Cpu className="w-4 h-4 text-purple-400" /> ATS Provider
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Cpu className="w-4 h-4 text-purple-600" /> ATS Provider
               </span>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-slate-200">{discoveryResult.ats}</span>
+                <span className="font-semibold text-slate-800">{discoveryResult.ats}</span>
                 {discoveryResult.ats !== "None" && (
-                  <span className="text-xs bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded border border-purple-500/20">
+                  <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-200">
                     Detected
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-amber-400" /> Scraping Strategy
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-amber-600" /> Scraping Strategy
               </span>
               <div className="flex flex-col gap-0.5">
                 <span className={`font-semibold text-xs ${getStrategyInfo(discoveryResult).color}`}>
                   {getStrategyInfo(discoveryResult).type}
                 </span>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-slate-500">
                   {getStrategyInfo(discoveryResult).detail}
                 </span>
               </div>
             </div>
 
             {discoveryResult.apiUrl && (
-              <div className="md:col-span-2 p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
-                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <div className="md:col-span-2 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Discovered API Endpoint
                 </span>
-                <div className="font-mono text-xs text-indigo-400 break-all bg-slate-950 p-2 rounded border border-slate-800">
+                <div className="font-mono text-xs text-indigo-700 break-all bg-white p-2 rounded border border-slate-200">
                   {discoveryResult.apiUrl}
                 </div>
               </div>
@@ -414,11 +414,11 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
 
           {/* Scrape Result Panel (When user clicked "Get Jobs Data") */}
           {scrapeResult && (
-            <div className="mt-6 p-5 rounded-xl bg-slate-900/80 border border-emerald-500/30 space-y-3">
+            <div className="mt-6 p-5 rounded-xl bg-emerald-50/50 border border-emerald-200 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-emerald-400" />
-                  <span className="font-bold text-slate-100">
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  <span className="font-bold text-slate-900">
                     Scraping Complete ({scrapeResult.status})
                   </span>
                 </div>
@@ -426,42 +426,42 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                  <span className="text-slate-400 block">Method Used</span>
-                  <span className="font-bold text-emerald-400">
+                <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <span className="text-slate-500 block">Method Used</span>
+                  <span className="font-bold text-emerald-600">
                     {formatScrapingMethod(scrapeResult.method, scrapeResult.strategyLabel || scrapeResult.metadata?.strategyLabel)}
                   </span>
                 </div>
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                  <span className="text-slate-400 block">
+                <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <span className="text-slate-500 block">
                     {scrapeResult.metadata?.preFilterValidCount !== undefined ? "Scraped on Portal" : "Jobs Found"}
                   </span>
-                  <span className="font-bold text-slate-100">
+                  <span className="font-bold text-slate-900">
                     {scrapeResult.metadata?.preFilterValidCount ?? scrapeResult.totalJobs}
                   </span>
                 </div>
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                  <span className="text-slate-400 block">Matching Filter</span>
-                  <span className="font-bold text-emerald-400">{scrapeResult.jobs?.length || 0}</span>
+                <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <span className="text-slate-500 block">Matching Filter</span>
+                  <span className="font-bold text-emerald-600">{scrapeResult.jobs?.length || 0}</span>
                 </div>
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                  <span className="text-slate-400 block">Filtered Out</span>
-                  <span className="font-bold text-amber-400">{scrapeResult.metadata?.filteredOutCount ?? 0}</span>
+                <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <span className="text-slate-500 block">Filtered Out</span>
+                  <span className="font-bold text-amber-600">{scrapeResult.metadata?.filteredOutCount ?? 0}</span>
                 </div>
-                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                  <span className="text-slate-400 block">Invalid/Rejected</span>
-                  <span className="font-bold text-rose-400">{scrapeResult.invalidJobs?.length || 0}</span>
+                <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <span className="text-slate-500 block">Invalid/Rejected</span>
+                  <span className="font-bold text-rose-600">{scrapeResult.invalidJobs?.length || 0}</span>
                 </div>
               </div>
 
               {scrapeResult.status === "NO_JOBS" && (
-                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-300 text-xs">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs">
                   {scrapeResult.metadata?.message || "No active job vacancies currently published on this careers portal (or matching selected filters)."}
                 </div>
               )}
 
               {scrapeResult.metadata?.strategyReason && (
-                <div className="text-xs text-slate-400 italic">
+                <div className="text-xs text-slate-500 italic">
                   Strategy: {scrapeResult.metadata.strategyReason}
                 </div>
               )}
@@ -482,12 +482,12 @@ export const CompanyDiscoveryPage: React.FC<CompanyDiscoveryPageProps> = ({ onVi
                         onViewJobs?.(scope);
                       }
                     }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition inline-block text-center shadow-lg shadow-emerald-600/20"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition inline-block text-center shadow-md shadow-emerald-600/20"
                   >
                     View Jobs in Results Table ({scrapeResult.jobs.length}) →
                   </Link>
                 ) : (
-                  <span className="text-xs text-slate-500 py-2">
+                  <span className="text-xs text-slate-400 py-2">
                     0 jobs saved (no active vacancies on this portal)
                   </span>
                 )}
