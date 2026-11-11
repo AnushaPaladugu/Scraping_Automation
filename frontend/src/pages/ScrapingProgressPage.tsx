@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Building2,
   ArrowRight,
+  Download,
 } from "lucide-react";
 import { NavTab } from "../components/Navbar";
 import { JobScope } from "../types";
@@ -38,6 +39,8 @@ export const ScrapingProgressPage: React.FC<ScrapingProgressPageProps> = ({
   const [allTasks, setAllTasks] = useState<BulkScrapingTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [downloading, setDownloading] = useState<"excel" | "json" | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   // Load all tasks for task switcher
   const fetchAllTasks = async () => {
@@ -96,6 +99,23 @@ export const ScrapingProgressPage: React.FC<ScrapingProgressPageProps> = ({
     }
   };
 
+  const handleDownloadJobs = async (format: "excel" | "json") => {
+    if (!task) return;
+    setDownloading(format);
+    setDownloadError(null);
+    try {
+      if (format === "excel") {
+        await apiService.downloadJobsExcel({ taskId: task.taskId });
+      } else {
+        await apiService.downloadJobsJson({ taskId: task.taskId });
+      }
+    } catch (err: any) {
+      setDownloadError(err.response?.data?.error || err.message || `Failed to download jobs ${format.toUpperCase()}`);
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Header */}
@@ -110,7 +130,7 @@ export const ScrapingProgressPage: React.FC<ScrapingProgressPageProps> = ({
         </div>
 
         {/* Task selector / switcher */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {allTasks.length > 0 && (
             <select
               value={taskId || ""}
@@ -145,26 +165,69 @@ export const ScrapingProgressPage: React.FC<ScrapingProgressPageProps> = ({
           )}
 
           {task && (
-            <Link
-              to="/jobs"
-              search={{ taskId: task.taskId }}
-              onClick={() => {
-                const scope: JobScope = {
-                  source: "bulk_scrape",
-                  taskId: task.taskId,
-                };
-                setJobScope(scope);
-                onViewJobs?.(scope);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition shadow-md shadow-emerald-600/20"
-            >
-              <Briefcase className="w-4 h-4" />
-              <span>View Results ({task.totalJobsExtracted} Jobs)</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            <>
+              <button
+                type="button"
+                onClick={() => handleDownloadJobs("excel")}
+                disabled={task.totalValidJobs === 0 || downloading !== null}
+                className={`flex items-center gap-2 px-4 py-2 font-semibold text-xs rounded-xl transition shadow-xs ${
+                  task.totalValidJobs > 0
+                    ? "bg-sky-600 hover:bg-sky-500 text-white shadow-md shadow-sky-600/20"
+                    : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                }`}
+                title={
+                  task.totalValidJobs > 0
+                    ? "Download extracted jobs as Excel (.xlsx)"
+                    : "Download unlocks once valid jobs are extracted"
+                }
+              >
+                {downloading === "excel" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                <span>Download Jobs Excel ({task.totalValidJobs})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDownloadJobs("json")}
+                disabled={task.totalValidJobs === 0 || downloading !== null}
+                className={`flex items-center gap-2 px-3.5 py-2 font-semibold text-xs rounded-xl transition border shadow-xs ${
+                  task.totalValidJobs > 0
+                    ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-300"
+                    : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                }`}
+                title="Download extracted jobs as JSON"
+              >
+                {downloading === "json" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                <span>JSON</span>
+              </button>
+
+              <Link
+                to="/jobs"
+                search={{ taskId: task.taskId }}
+                onClick={() => {
+                  const scope: JobScope = {
+                    source: "bulk_scrape",
+                    taskId: task.taskId,
+                  };
+                  setJobScope(scope);
+                  onViewJobs?.(scope);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl transition shadow-md shadow-emerald-600/20"
+              >
+                <Briefcase className="w-4 h-4" />
+                <span>View Results ({task.totalJobsExtracted} Jobs)</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </>
           )}
         </div>
       </div>
+
+      {downloadError && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-center gap-3 text-rose-700 text-sm">
+          <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />
+          <span>{downloadError}</span>
+        </div>
+      )}
 
       {!taskId && (
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-4 shadow-xs">

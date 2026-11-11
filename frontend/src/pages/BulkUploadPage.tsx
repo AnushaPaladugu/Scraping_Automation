@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { CompanyDiscoveryResult } from "../types";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { BulkScrapingTask, CompanyDiscoveryResult, S3UploadInfo, UploadedFileRecord } from "../types";
 import { apiService } from "../services/api";
 import { StatusBadge } from "../components/StatusBadge";
 import {
@@ -19,6 +19,10 @@ import {
   Download,
   Building2,
   Briefcase,
+  Database,
+  Cloud,
+  RefreshCw,
+  FolderOpen,
 } from "lucide-react";
 import { NavTab } from "../components/Navbar";
 import { useNavigate } from "@tanstack/react-router";
@@ -31,13 +35,23 @@ interface BulkUploadPageProps {
 
 export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onStartBulkScrape }) => {
   const navigate = useNavigate();
-  const { setActiveTaskId } = useApp();
+  const { activeTaskId, setActiveTaskId } = useApp();
   const [activeOption, setActiveOption] = useState<"details" | "jobs">("details");
   const [companies, setCompanies] = useState<Array<{ companyName: string; companyUrl?: string; careerUrl?: string; ats?: string; industry?: string; city?: string; state?: string; country?: string }>>([]);
   const [fileInfo, setFileInfo] = useState<{ filename: string; total: number; detectedColumn: string } | null>(null);
   const [invalidRows, setInvalidRows] = useState<Array<{ rowNumber: number; reason: string }>>([]);
   const [discoveredMap, setDiscoveredMap] = useState<Record<string, CompanyDiscoveryResult>>({});
   const [hasDiscovered, setHasDiscovered] = useState(false);
+
+  // S3 & DB Upload State
+  const [currentUploadId, setCurrentUploadId] = useState<string | null>(null);
+  const [s3Info, setS3Info] = useState<S3UploadInfo | null>(null);
+  const [storageStatus, setStorageStatus] = useState<"stored" | "skipped" | null>(null);
+  const [storageNotice, setStorageNotice] = useState<string | null>(null);
+  const [savedUploads, setSavedUploads] = useState<UploadedFileRecord[]>([]);
+  const [loadingUploads, setLoadingUploads] = useState(false);
+  const [loadingSavedId, setLoadingSavedId] = useState<string | null>(null);
+  const [deletingUploadId, setDeletingUploadId] = useState<string | null>(null);
 
   // Pre-scraping filters
   const [filterCountry, setFilterCountry] = useState("");
@@ -54,7 +68,54 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onStartBulkScrap
   const [discoveryProgress, setDiscoveryProgress] = useState<{ processed: number; total: number } | null>(null);
   const [startingScrape, setStartingScrape] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
+  const [downloadingJobs, setDownloadingJobs] = useState<"excel" | "json" | null>(null);
+  const [lastScrapeTask, setLastScrapeTask] = useState<BulkScrapingTask | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchSavedUploads = useCallback(async () => {
+    setLoadingUploads(true);
+    try {
+      const res = await apiService.listUploadedFiles(15);
+      setSavedUploads(res.uploads || []);
+    } catch {
+      // Silently ignore if backend/DB is temporarily unavailable on initial load
+    } finally {
+      setLoadingUploads(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSavedUploads();
+  }, [fetchSavedUploads]);
+
+  useEffect(() => {
+    if (!activeTaskId) {
+      setLastScrapeTask(null);
+      return;
+    }
+
+    let isMounted = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const pollTask = async () => {
+      try {
+        const task = await apiService.getScrapeStatus(activeTaskId);
+        if (!isMounted) return;
+        setLastScrapeTask(task);
+        if (task.status === "queued" || task.status === "processing") {
+          timer = setTimeout(pollTask, 2000);
+        }
+      } catch {
+        if (isMounted) setLastScrapeTask(null);
+      }
+    };
+
+    pollTask();
+    return () => {
+      isMounted = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [activeTaskId]);
 
   // File Upload handler
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,6 +124,7 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onStartBulkScrap
 
     setUploading(true);
     setError(null);
+    setStorageNotice(null);
     setDiscoveredMap({});
     setHasDiscovered(false);
     try {
@@ -74,12 +136,73 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onStartBulkScrap
         detectedColumn: res.detectedColumn,
       });
       setInvalidRows(res.invalidRows || []);
+      setCurrentUploadId(res.uploadId || null);
+      setS3Info(res.s3 || null);
+      setStorageStatus(res.storageStatus || null);
+      setStorageNotice(res.warning || null);
       // Select all uploaded companies by default
       setSelectedIndices(new Set(res.companies.map((_, i) => i)));
+      await fetchSavedUploads();
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || "Failed to parse file");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleLoadSavedUpload = async (uploadId: string) => {
+    setLoadingSavedId(uploadId);
+    setError(null);
+    setStorageNotice(null);
+    setDiscoveredMap({});
+    setHasDiscovered(false);
+    try {
+      const res = await apiService.loadUploadedFile(uploadId);
+      setCompanies(res.companies);
+      setFileInfo({
+        filename: res.filename,
+        total: res.totalRows,
+        detectedColumn: res.detectedColumn || "company_name",
+      });
+      setInvalidRows(res.invalidRows || []);
+      setCurrentUploadId(res.uploadId);
+      setStorageStatus(res.file.storageStatus === "stored" ? "stored" : "skipped");
+      setS3Info(
+        res.file.s3Key && res.file.s3Bucket
+          ? {
+              bucket: res.file.s3Bucket,
+              key: res.file.s3Key,
+              etag: res.file.s3Etag || undefined,
+              size: res.file.fileSize,
+              contentType: res.file.mimeType,
+              uploadedAt: res.file.createdAt,
+              downloadUrl: res.file.downloadUrl,
+            }
+          : null
+      );
+      setSelectedIndices(new Set(res.companies.map((_, i) => i)));
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || "Failed to load saved upload");
+    } finally {
+      setLoadingSavedId(null);
+    }
+  };
+
+  const handleDeleteSavedUpload = async (uploadId: string) => {
+    setDeletingUploadId(uploadId);
+    setError(null);
+    try {
+      await apiService.deleteUploadedFile(uploadId);
+      if (currentUploadId === uploadId) {
+        setCurrentUploadId(null);
+        setS3Info(null);
+        setStorageStatus(null);
+      }
+      await fetchSavedUploads();
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || "Failed to delete upload");
+    } finally {
+      setDeletingUploadId(null);
     }
   };
 
@@ -92,6 +215,10 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onStartBulkScrap
       detectedColumn: "company_name",
     });
     setInvalidRows([]);
+    setCurrentUploadId(null);
+    setS3Info(null);
+    setStorageStatus(null);
+    setStorageNotice(null);
     setDiscoveredMap({});
     setHasDiscovered(false);
     setSelectedIndices(new Set(preset.map((_, i) => i)));
@@ -227,13 +354,42 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onStartBulkScrap
         keyword: filterKeyword.trim() || undefined,
         postedWithinDays: filterDays,
       };
-      const res = await apiService.startBulkScrape(targetCompanies, filters);
+      const res = await apiService.startBulkScrape(targetCompanies, filters, {
+        sourceUploadId: currentUploadId || undefined,
+        sourceFilename: fileInfo?.filename,
+      });
       setActiveTaskId(res.taskId);
       onStartBulkScrape?.(res.taskId);
       navigate({ to: "/scraping", search: { taskId: res.taskId } });
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || "Failed to start bulk scraping");
       setStartingScrape(false);
+    }
+  };
+
+  const handleDownloadScrapedJobs = async (format: "excel" | "json") => {
+    if (!lastScrapeTask) return;
+    setDownloadingJobs(format);
+    setError(null);
+    try {
+      const baseName = fileInfo?.filename
+        ? `jobs_${fileInfo.filename.replace(/\.[^.]+$/, "")}`
+        : `task_${lastScrapeTask.taskId.slice(0, 8)}_jobs`;
+      if (format === "excel") {
+        await apiService.downloadJobsExcel({
+          taskId: lastScrapeTask.taskId,
+          filename: baseName,
+        });
+      } else {
+        await apiService.downloadJobsJson({
+          taskId: lastScrapeTask.taskId,
+          filename: baseName,
+        });
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || `Failed to download jobs ${format.toUpperCase()}`);
+    } finally {
+      setDownloadingJobs(null);
     }
   };
 
@@ -374,14 +530,53 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onStartBulkScrap
                 </button>
               </>
             ) : (
-              <button
-                onClick={handleStartBulkScrape}
-                disabled={startingScrape || discovering || downloadingExcel}
-                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold text-xs rounded-xl transition shadow-md shadow-emerald-600/20"
-              >
-                {startingScrape ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
-                <span>Get Jobs Data ({selectedIndices.size || companies.length})</span>
-              </button>
+              <>
+                <button
+                  onClick={handleStartBulkScrape}
+                  disabled={startingScrape || discovering || downloadingExcel}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold text-xs rounded-xl transition shadow-md shadow-emerald-600/20"
+                >
+                  {startingScrape ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
+                  <span>1. Get Jobs Data ({selectedIndices.size || companies.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDownloadScrapedJobs("excel")}
+                  disabled={!lastScrapeTask || lastScrapeTask.totalValidJobs === 0 || downloadingJobs !== null}
+                  className={`flex items-center gap-2 px-4 py-2.5 font-semibold text-xs rounded-xl transition shadow-md ${
+                    lastScrapeTask && lastScrapeTask.totalValidJobs > 0
+                      ? "bg-sky-600 hover:bg-sky-500 text-white shadow-sky-600/20 ring-2 ring-sky-400/40"
+                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                  }`}
+                  title={
+                    lastScrapeTask && lastScrapeTask.totalValidJobs > 0
+                      ? `Download ${lastScrapeTask.totalValidJobs} scraped jobs from task ${lastScrapeTask.taskId.slice(0, 8)} as Excel (.xlsx)`
+                      : "Click '1. Get Jobs Data' first to scrape jobs"
+                  }
+                >
+                  {downloadingJobs === "excel" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  <span>
+                    2. Download Jobs Excel{" "}
+                    {lastScrapeTask && lastScrapeTask.totalValidJobs > 0
+                      ? `(${lastScrapeTask.totalValidJobs} Ready)`
+                      : "(Locked)"}
+                  </span>
+                </button>
+
+                {lastScrapeTask && lastScrapeTask.totalValidJobs > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadScrapedJobs("json")}
+                    disabled={downloadingJobs !== null}
+                    className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold text-xs rounded-xl transition shadow-xs"
+                    title="Download scraped jobs as JSON"
+                  >
+                    {downloadingJobs === "json" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    <span>JSON</span>
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
@@ -499,19 +694,27 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onStartBulkScrap
         </div>
       )}
 
+      {/* Storage Notice (e.g. S3 pending setup while saved to MySQL) */}
+      {storageNotice && (
+        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-3 text-amber-800 text-xs">
+          <Database className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>{storageNotice}</span>
+        </div>
+      )}
+
       {/* Upload Summary & Validation */}
       {fileInfo && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center gap-3 shadow-xs">
-            <FileSpreadsheet className="w-8 h-8 text-emerald-600" />
-            <div>
+            <FileSpreadsheet className="w-8 h-8 text-emerald-600 shrink-0" />
+            <div className="min-w-0">
               <span className="text-xs text-slate-500 block">Loaded File</span>
-              <span className="text-sm font-semibold text-slate-800">{fileInfo.filename}</span>
+              <span className="text-sm font-semibold text-slate-800 block truncate">{fileInfo.filename}</span>
             </div>
           </div>
 
           <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center gap-3 shadow-xs">
-            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+            <CheckCircle2 className="w-8 h-8 text-emerald-600 shrink-0" />
             <div>
               <span className="text-xs text-slate-500 block">Valid Companies</span>
               <span className="text-sm font-semibold text-slate-800">
@@ -521,13 +724,134 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onStartBulkScrap
           </div>
 
           <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center gap-3 shadow-xs">
-            <Search className="w-8 h-8 text-indigo-600" />
+            <Search className="w-8 h-8 text-indigo-600 shrink-0" />
             <div>
               <span className="text-xs text-slate-500 block">Detected Column</span>
               <span className="text-sm font-semibold text-indigo-700 font-mono">
                 {fileInfo.detectedColumn}
               </span>
             </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3 min-w-0">
+              {storageStatus === "stored" ? (
+                <Cloud className="w-8 h-8 text-sky-600 shrink-0" />
+              ) : (
+                <Database className="w-8 h-8 text-slate-500 shrink-0" />
+              )}
+              <div className="min-w-0">
+                <span className="text-xs text-slate-500 block">Persistence</span>
+                <span className="text-sm font-semibold text-slate-800 block truncate">
+                  {currentUploadId
+                    ? storageStatus === "stored"
+                      ? "MySQL + S3"
+                      : "MySQL (S3 Pending)"
+                    : "In-Memory Preset"}
+                </span>
+              </div>
+            </div>
+            {currentUploadId && storageStatus === "stored" && (
+              <a
+                href={s3Info?.downloadUrl || apiService.getUploadDownloadUrl(currentUploadId)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2.5 py-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[11px] font-semibold shrink-0 flex items-center gap-1"
+                title="Download original file from S3"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>S3</span>
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Saved Uploads History (MySQL + S3) */}
+      {(savedUploads.length > 0 || loadingUploads) && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-sky-600" />
+              <h3 className="text-sm font-bold text-slate-900">Saved Bulk Uploads (MySQL & S3)</h3>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+                {savedUploads.length}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={fetchSavedUploads}
+              disabled={loadingUploads}
+              className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingUploads ? "animate-spin" : ""}`} />
+              <span>Refresh</span>
+            </button>
+          </div>
+
+          <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto">
+            {savedUploads.map((item) => (
+              <div key={item.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-slate-800 truncate">{item.originalFilename}</div>
+                    <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-2">
+                      <span>{item.validCount}/{item.totalRows} valid rows</span>
+                      <span>•</span>
+                      <span>
+                        {item.storageStatus === "stored" ? "S3 + MySQL" : "MySQL only"}
+                      </span>
+                      <span>•</span>
+                      <span>{new Date(item.createdAt).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleLoadSavedUpload(item.id)}
+                    disabled={loadingSavedId === item.id}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold flex items-center gap-1"
+                  >
+                    {loadingSavedId === item.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <FolderOpen className="w-3.5 h-3.5" />
+                    )}
+                    <span>Load</span>
+                  </button>
+
+                  {item.canDownloadFromS3 && (
+                    <a
+                      href={apiService.getUploadDownloadUrl(item.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-semibold flex items-center gap-1"
+                      title="Download original file from S3"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download</span>
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSavedUpload(item.id)}
+                    disabled={deletingUploadId === item.id}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                    title="Delete saved upload"
+                  >
+                    {deletingUploadId === item.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -630,7 +954,13 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onStartBulkScrap
                 onClick={() => {
                   setCompanies([]);
                   setFileInfo(null);
+                  setInvalidRows([]);
+                  setCurrentUploadId(null);
+                  setS3Info(null);
+                  setStorageStatus(null);
+                  setStorageNotice(null);
                   setDiscoveredMap({});
+                  setHasDiscovered(false);
                   setSelectedIndices(new Set());
                 }}
                 className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 ml-2 font-medium"

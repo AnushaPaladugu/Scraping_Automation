@@ -5,6 +5,8 @@ import {
   BulkScrapingTask,
   SystemMetrics,
   LogEntry,
+  S3UploadInfo,
+  UploadedFileRecord,
 } from "../types";
 
 const client = axios.create({
@@ -24,13 +26,18 @@ export const apiService = {
   },
 
   async uploadCompanyFile(file: File): Promise<{
+    uploadId?: string;
     filename: string;
     detectedColumn: string;
+    detectedSheet?: string;
     totalRows: number;
     validCount: number;
     invalidCount: number;
     companies: Array<{ companyName: string; companyUrl?: string; careerUrl?: string }>;
     invalidRows: Array<{ rowNumber: number; reason: string }>;
+    storageStatus?: "stored" | "skipped";
+    s3?: S3UploadInfo | null;
+    warning?: string;
   }> {
     const formData = new FormData();
     formData.append("file", file);
@@ -38,6 +45,39 @@ export const apiService = {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return res.data;
+  },
+
+  async listUploadedFiles(limit: number = 25): Promise<{
+    total: number;
+    s3Configured: boolean;
+    uploads: UploadedFileRecord[];
+  }> {
+    const res = await client.get("/companies/uploads", { params: { limit } });
+    return res.data;
+  },
+
+  async loadUploadedFile(id: string): Promise<{
+    uploadId: string;
+    file: UploadedFileRecord;
+    filename: string;
+    detectedColumn: string;
+    detectedSheet?: string;
+    totalRows: number;
+    validCount: number;
+    invalidCount: number;
+    companies: Array<{ companyName: string; companyUrl?: string; careerUrl?: string }>;
+    invalidRows: Array<{ rowNumber: number; reason: string }>;
+  }> {
+    const res = await client.get(`/companies/uploads/${encodeURIComponent(id)}`);
+    return res.data;
+  },
+
+  getUploadDownloadUrl(id: string): string {
+    return `/api/companies/uploads/${encodeURIComponent(id)}/download`;
+  },
+
+  async deleteUploadedFile(id: string): Promise<void> {
+    await client.delete(`/companies/uploads/${encodeURIComponent(id)}`);
   },
 
   async discoverBulkCompanies(
@@ -60,9 +100,15 @@ export const apiService = {
 
   async startBulkScrape(
     companies: Array<{ companyName: string; companyUrl?: string; careerUrl?: string }>,
-    filters?: import("../types").ScrapeFilters
+    filters?: import("../types").ScrapeFilters,
+    sourceInfo?: { sourceUploadId?: string; sourceFilename?: string }
   ): Promise<{ taskId: string; status: string; totalCompanies: number }> {
-    const res = await client.post("/scrape/bulk", { companies, filters });
+    const res = await client.post("/scrape/bulk", {
+      companies,
+      filters,
+      ...(sourceInfo?.sourceUploadId ? { sourceUploadId: sourceInfo.sourceUploadId } : {}),
+      ...(sourceInfo?.sourceFilename ? { sourceFilename: sourceInfo.sourceFilename } : {}),
+    });
     return res.data;
   },
 
@@ -124,7 +170,12 @@ export const apiService = {
       : "/api/jobs/export/json";
   },
 
-  async downloadJobsExcel(options: { jobs?: NormalizedJob[]; company?: string; filename?: string }): Promise<void> {
+  async downloadJobsExcel(options: {
+    jobs?: NormalizedJob[];
+    company?: string;
+    taskId?: string;
+    filename?: string;
+  }): Promise<void> {
     const res = await client.post("/jobs/export/excel", options, {
       responseType: "blob",
     });
@@ -138,6 +189,8 @@ export const apiService = {
       ? `${options.filename.replace(/\.xlsx$/i, "")}.xlsx`
       : options.company
       ? `${options.company.toLowerCase().replace(/[^a-z0-9_-]+/g, "_")}_jobs.xlsx`
+      : options.taskId
+      ? `task_${options.taskId.slice(0, 8)}_jobs.xlsx`
       : "normalized_jobs.xlsx";
     link.setAttribute("download", name);
     document.body.appendChild(link);
@@ -146,7 +199,12 @@ export const apiService = {
     window.URL.revokeObjectURL(url);
   },
 
-  async downloadJobsJson(options: { jobs?: NormalizedJob[]; company?: string; filename?: string }): Promise<void> {
+  async downloadJobsJson(options: {
+    jobs?: NormalizedJob[];
+    company?: string;
+    taskId?: string;
+    filename?: string;
+  }): Promise<void> {
     const res = await client.post("/jobs/export/json", options, {
       responseType: "blob",
     });
@@ -158,6 +216,8 @@ export const apiService = {
       ? `${options.filename.replace(/\.json$/i, "")}.json`
       : options.company
       ? `${options.company.toLowerCase().replace(/[^a-z0-9_-]+/g, "_")}_jobs.json`
+      : options.taskId
+      ? `task_${options.taskId.slice(0, 8)}_jobs.json`
       : "normalized_jobs.json";
     link.setAttribute("download", name);
     document.body.appendChild(link);

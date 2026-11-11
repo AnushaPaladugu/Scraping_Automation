@@ -1,34 +1,63 @@
 import fs from "fs";
+import { Readable } from "stream";
 import csvParser from "csv-parser";
-import ExcelJS from "exceljs";
 import * as XLSX from "xlsx";
 import { CompanyInput } from "../types/company";
+
+export interface ParsedRowRecord {
+  rowNumber: number;
+  isValid: boolean;
+  invalidReason?: string;
+  company?: CompanyInput;
+  rawData: Record<string, unknown>;
+}
 
 export interface ParsedCompanyFileResult {
   validCompanies: CompanyInput[];
   invalidRows: Array<{ rowNumber: number; data: any; reason: string }>;
+  allRows: ParsedRowRecord[];
   detectedColumn: string | null;
   totalRows: number;
   detectedSheet?: string;
 }
 
-export async function parseCompanyFile(filePath: string, originalFilename?: string): Promise<ParsedCompanyFileResult> {
-  const nameToInspect = originalFilename || filePath;
-  const match = nameToInspect.match(/\.([a-zA-Z0-9]+)$/);
+const SUPPORTED_EXTENSIONS = new Set(["csv", "xlsx", "xls"]);
+
+export function getValidatedExtension(nameToInspect: string): string {
+  const match = (nameToInspect || "").trim().match(/\.([a-zA-Z0-9]+)$/);
   const ext = match ? match[1].toLowerCase() : "";
-  if (ext === "csv") {
-    return parseCsvFile(filePath);
-  } else {
-    // XLSX, XLS, or default to Excel parser
-    return parseExcelFile(filePath);
+  if (!SUPPORTED_EXTENSIONS.has(ext)) {
+    throw new Error(`Unsupported file extension: .${ext || "unknown"}`);
   }
+  return ext;
 }
 
-async function parseCsvFile(filePath: string): Promise<ParsedCompanyFileResult> {
+export async function parseCompanyFile(filePath: string, originalFilename?: string): Promise<ParsedCompanyFileResult> {
+  const ext = getValidatedExtension(originalFilename || filePath);
+  if (ext === "csv") {
+    return parseCsvStream(fs.createReadStream(filePath));
+  }
+  const workbook = XLSX.readFile(filePath, { cellDates: true });
+  return parseExcelWorkbook(workbook);
+}
+
+export async function parseCompanyBuffer(
+  buffer: Buffer,
+  originalFilename: string
+): Promise<ParsedCompanyFileResult> {
+  const ext = getValidatedExtension(originalFilename);
+  if (ext === "csv") {
+    return parseCsvStream(Readable.from(buffer));
+  }
+  const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
+  return parseExcelWorkbook(workbook);
+}
+
+async function parseCsvStream(stream: NodeJS.ReadableStream): Promise<ParsedCompanyFileResult> {
   const rows: any[] = [];
 
   await new Promise<void>((resolve, reject) => {
-    fs.createReadStream(filePath)
+    stream
       .pipe(csvParser())
       .on("data", (data) => rows.push(data))
       .on("end", () => resolve())
@@ -51,9 +80,7 @@ const CANDIDATE_COMPANY_KEYS = [
   "firm",
 ];
 
-async function parseExcelFile(filePath: string): Promise<ParsedCompanyFileResult> {
-  const workbook = XLSX.readFile(filePath, { cellDates: true });
-
+function parseExcelWorkbook(workbook: XLSX.WorkBook): ParsedCompanyFileResult {
   if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
     throw new Error("Excel file has no worksheets.");
   }
@@ -116,6 +143,7 @@ function processRawRows(rows: any[]): ParsedCompanyFileResult {
     return {
       validCompanies: [],
       invalidRows: [],
+      allRows: [],
       detectedColumn: null,
       totalRows: 0,
     };
@@ -142,16 +170,25 @@ function processRawRows(rows: any[]): ParsedCompanyFileResult {
 
   const validCompanies: CompanyInput[] = [];
   const invalidRows: Array<{ rowNumber: number; data: any; reason: string }> = [];
+  const allRows: ParsedRowRecord[] = [];
 
   rows.forEach((row, index) => {
+    const rowNumber = index + 2;
     const rawVal = row[detectedColumn!];
     const companyName = extractCellValue(rawVal);
 
     if (!companyName) {
+      const reason = `Missing or empty '${detectedColumn}' value`;
       invalidRows.push({
-        rowNumber: index + 2,
+        rowNumber,
         data: row,
-        reason: `Missing or empty '${detectedColumn}' value`,
+        reason,
+      });
+      allRows.push({
+        rowNumber,
+        isValid: false,
+        invalidReason: reason,
+        rawData: row,
       });
       return;
     }
@@ -167,7 +204,7 @@ function processRawRows(rows: any[]): ParsedCompanyFileResult {
     const state = findColumnValue(row, ["state", "region", "province"]);
     const country = findColumnValue(row, ["country", "nation"]);
 
-    validCompanies.push({
+    const company: CompanyInput = {
       id: id || index + 1,
       companyName,
       companyUrl,
@@ -178,12 +215,21 @@ function processRawRows(rows: any[]): ParsedCompanyFileResult {
       city,
       state,
       country,
+    };
+
+    validCompanies.push(company);
+    allRows.push({
+      rowNumber,
+      isValid: true,
+      company,
+      rawData: row,
     });
   });
 
   return {
     validCompanies,
     invalidRows,
+    allRows,
     detectedColumn,
     totalRows: rows.length,
   };

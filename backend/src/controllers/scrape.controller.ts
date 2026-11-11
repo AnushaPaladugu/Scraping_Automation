@@ -34,12 +34,15 @@ export class ScrapeController {
 
   public static async startBulkScrape(req: Request, res: Response) {
     try {
-      const { companies, filters } = req.body;
+      const { companies, filters, sourceUploadId, sourceFilename } = req.body;
       if (!Array.isArray(companies) || companies.length === 0) {
         return res.status(400).json({ error: "companies array is required" });
       }
 
-      const task = taskManager.createTask(companies);
+      const task = taskManager.createTask(companies, {
+        sourceUploadId: typeof sourceUploadId === "string" ? sourceUploadId : undefined,
+        sourceFilename: typeof sourceFilename === "string" ? sourceFilename : undefined,
+      });
       logger.info(`Created bulk scraping task ${task.taskId} with ${companies.length} companies`);
 
       // Fire and run asynchronously (does not block HTTP response)

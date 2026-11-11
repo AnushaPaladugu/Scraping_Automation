@@ -4,13 +4,52 @@ import { BulkScrapingTask } from "./task";
 
 export interface LogEntry {
   company?: string;
-  stage: "discovery" | "detection" | "strategy" | "scraping" | "processing" | "validation" | "deduplication" | "export";
+  stage:
+    | "upload"
+    | "discovery"
+    | "detection"
+    | "strategy"
+    | "scraping"
+    | "processing"
+    | "validation"
+    | "deduplication"
+    | "export";
   method?: string;
   status: "success" | "warning" | "error" | "info";
   jobsFound?: number;
   message: string;
   timestamp: string;
   details?: any;
+}
+
+export interface S3UploadResult {
+  bucket: string;
+  key: string;
+  etag?: string;
+  size: number;
+  contentType: string;
+  uploadedAt: string;
+  downloadUrl?: string;
+}
+
+export interface UploadedFileMetadata {
+  id: string;
+  originalFilename: string;
+  mimeType: string;
+  fileExtension: string;
+  fileSize: number;
+  s3Bucket: string | null;
+  s3Key: string | null;
+  s3Etag: string | null;
+  storageStatus: "stored" | "skipped" | "deleted";
+  detectedColumn: string | null;
+  detectedSheet: string | null;
+  totalRows: number;
+  validCount: number;
+  invalidCount: number;
+  createdAt: string;
+  updatedAt: string;
+  downloadUrl?: string | null;
 }
 
 export interface IStorageService {

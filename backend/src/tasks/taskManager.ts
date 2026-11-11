@@ -7,7 +7,10 @@ class TaskManager {
   private activeTasks: Map<string, BulkScrapingTask> = new Map();
   private cancelFlags: Map<string, boolean> = new Map();
 
-  public createTask(companies: CompanyInput[]): BulkScrapingTask {
+  public createTask(
+    companies: CompanyInput[],
+    sourceInfo?: { sourceUploadId?: string; sourceFilename?: string }
+  ): BulkScrapingTask {
     const taskId = uuidv4();
     const taskCompanies: CompanyTaskProgress[] = companies.map((c) => ({
       companyName: c.companyName,
@@ -20,6 +23,8 @@ class TaskManager {
     const task: BulkScrapingTask = {
       taskId,
       status: "queued",
+      ...(sourceInfo?.sourceUploadId ? { sourceUploadId: sourceInfo.sourceUploadId } : {}),
+      ...(sourceInfo?.sourceFilename ? { sourceFilename: sourceInfo.sourceFilename } : {}),
       totalCompanies: companies.length,
       processedCompanies: 0,
       successfulCompanies: 0,

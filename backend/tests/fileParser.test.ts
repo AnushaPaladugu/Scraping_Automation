@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import path from "path";
 import fs from "fs";
 import os from "os";
-import { parseCompanyFile } from "../src/utils/fileParser";
+import * as XLSX from "xlsx";
+import { parseCompanyBuffer, parseCompanyFile } from "../src/utils/fileParser";
 
 describe("File Parser", () => {
   const sampleExcelPath = path.resolve(__dirname, "../../41_companies(2nd batch).xlsx");
@@ -82,5 +83,38 @@ Microsoft,https://microsoft.com,https://careers.microsoft.com,US
         fs.unlinkSync(dummyPath);
       }
     }
+  });
+
+  it("should parse CSV buffers in memory via parseCompanyBuffer", async () => {
+    const csvBuffer = Buffer.from(
+      "company_name,website,country\nStripe,https://stripe.com,US\n,https://missing.com,US\n",
+      "utf-8"
+    );
+
+    const result = await parseCompanyBuffer(csvBuffer, "batch.csv");
+    expect(result.detectedColumn).toBe("company_name");
+    expect(result.totalRows).toBe(2);
+    expect(result.validCompanies.length).toBe(1);
+    expect(result.invalidRows.length).toBe(1);
+    expect(result.allRows.length).toBe(2);
+    expect(result.allRows[0].isValid).toBe(true);
+    expect(result.allRows[1].isValid).toBe(false);
+    expect(result.validCompanies[0].companyName).toBe("Stripe");
+  });
+
+  it("should parse Excel (.xlsx) buffers in memory via parseCompanyBuffer", async () => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet([
+      { company_name: "GitLab", website: "https://gitlab.com", country: "US" },
+      { company_name: "Figma", website: "https://figma.com", country: "US" },
+    ]);
+    XLSX.utils.book_append_sheet(wb, ws, "Companies");
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+
+    const result = await parseCompanyBuffer(buffer, "companies.xlsx");
+    expect(result.detectedSheet).toBe("Companies");
+    expect(result.validCompanies.length).toBe(2);
+    expect(result.validCompanies[0].companyName).toBe("GitLab");
+    expect(result.validCompanies[1].companyName).toBe("Figma");
   });
 });

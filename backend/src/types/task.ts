@@ -20,6 +20,8 @@ export interface CompanyTaskProgress {
 export interface BulkScrapingTask {
   taskId: string;
   status: TaskStatus;
+  sourceUploadId?: string;
+  sourceFilename?: string;
   totalCompanies: number;
   processedCompanies: number;
   successfulCompanies: number;
